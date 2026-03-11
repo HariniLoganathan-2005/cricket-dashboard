@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cricket Match Intelligence & Analytics Dashboard — Live scores, win probability, AI commentary, wagon wheel, and deep insights for T20, ODI, and Test cricket.">
+  <title>CricViz Intelligence — Cricket Analytics Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+<!-- Particle Canvas -->
+<canvas id="particleCanvas"></canvas>
+
+<div class="container">
+
+  <!-- ═══════════ TOP BAR ═══════════ -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-icon">🏏</div>
+      <div>
+        <div class="logo-text">CricViz Intelligence</div>
+        <div class="logo-sub">Analytics Dashboard</div>
+      </div>
+    </div>
+
+    <div class="topbar-controls">
+      <span id="liveBadge" class="live-badge hidden">
+        <span class="live-dot"></span> LIVE
+      </span>
+      <button id="soundToggle" class="sound-toggle" onclick="Effects.toggleSound()" title="Toggle Sound (M)">🔊</button>
+      <button id="themeToggle" class="theme-toggle" title="Toggle Theme (T)">☀️</button>
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="replay" id="btnReplay">📊 Replay</button>
+        <button class="mode-btn" data-mode="live" id="btnLive">🔴 Live</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Keyboard shortcuts hint -->
+  <div class="keyboard-hints" style="margin-bottom:16px">
+    <span class="kbd">Space</span> Play/Pause
+    <span class="kbd">←→</span> Step Overs
+    <span class="kbd">L</span> Live
+    <span class="kbd">R</span> Replay
+    <span class="kbd">M</span> Mute
+    <span class="kbd">T</span> Theme
+    <span class="kbd">N</span> New Match
+    <span class="kbd">E</span> Export
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- ═══════════ LIVE MODE SECTION ═══════════ -->
+  <!-- ═══════════════════════════════════════ -->
+  <section id="liveSection" class="hidden">
+
+    <!-- Match Info -->
+    <div class="match-info-bar animate-in">
+      <span id="liveFormatBadge" class="match-format-badge format-t20">T20</span>
+      <span id="liveMatchTitle" class="match-title">—</span>
+      <span id="liveMatchMeta" class="match-meta">—</span>
+    </div>
+
+    <!-- Scoreboard -->
+    <div class="card scoreboard animate-in" style="animation-delay:0.1s">
+      <div class="team-block">
+        <div id="liveTeamAName" class="team-name">Team A</div>
+        <div id="liveTeamAScore" class="team-score">—</div>
+        <div id="liveTeamAOvers" class="team-overs"></div>
+      </div>
+      <div class="vs-divider">
+        <div class="vs-text">VS</div>
+        <div id="liveStatusText" class="match-status-text">Waiting...</div>
+      </div>
+      <div class="team-block">
+        <div id="liveTeamBName" class="team-name">Team B</div>
+        <div id="liveTeamBScore" class="team-score">—</div>
+        <div id="liveTeamBOvers" class="team-overs"></div>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row stagger animate-in" style="animation-delay:0.2s">
+      <div class="card stat-card">
+        <div id="liveCRR" class="stat-value cyan">0.00</div>
+        <div class="stat-label">Current RR</div>
+      </div>
+      <div class="card stat-card">
+        <div id="liveRRR" class="stat-value amber">—</div>
+        <div class="stat-label">Required RR</div>
+      </div>
+      <div class="card stat-card">
+        <div id="liveTarget" class="stat-value green">—</div>
+        <div class="stat-label">Target</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-value red"><span id="livePressureVal">0</span></div>
+        <div class="stat-label">Pressure Index</div>
+        <div class="pressure-meter" style="margin-top:8px">
+          <div id="livePressureFill" class="pressure-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Win Probability -->
+    <div id="liveWinProbWrap" class="card hidden animate-in" style="animation-delay:0.3s">
+      <div class="card-title"><span class="icon">📊</span> Win Probability</div>
+      <div class="win-prob-container">
+        <div class="win-prob-labels">
+          <span id="liveWinLabelA" class="team-a-label">Team A</span>
+          <span id="liveWinLabelB" class="team-b-label">Team B</span>
+        </div>
+        <div class="win-prob-bar-wrap">
+          <div id="liveWinFillA" class="win-prob-fill team-a" style="width:50%">50%</div>
+          <div id="liveWinFillB" class="win-prob-fill team-b" style="width:50%">50%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live grid: Chart + Commentary -->
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="card animate-in" style="animation-delay:0.4s">
+        <div class="card-title"><span class="icon">📈</span> Over-by-Over Progression</div>
+        <div class="chart-container">
+          <canvas id="liveOverChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Commentary -->
+      <div class="card animate-in" style="animation-delay:0.45s">
+        <div class="card-title"><span class="icon">💬</span> Live Commentary</div>
+        <div id="liveCommentaryFeed" class="commentary-feed">
+          <div class="commentary-item"><span class="commentary-text" style="color:var(--text-dim)">Waiting for play to begin...</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live: Momentum + Phase -->
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="card animate-in" style="animation-delay:0.5s">
+        <div class="card-title"><span class="icon">🌊</span> Momentum</div>
+        <div id="liveMomentum"></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.55s">
+        <div class="card-title"><span class="icon">⚡</span> Phase Breakdown</div>
+        <div id="livePhaseGrid" class="phase-grid"></div>
+      </div>
+    </div>
+
+    <!-- Speed Control -->
+    <div style="display:flex;align-items:center;gap:12px;margin:20px 0;flex-wrap:wrap">
+      <span style="font-size:0.82rem;color:var(--text-dim);">Speed:</span>
+      <button class="btn btn-secondary btn-sm" onclick="LiveMatch.setSpeed(3000)">🐢 Slow</button>
+      <button class="btn btn-secondary btn-sm" onclick="LiveMatch.setSpeed(2000)">⚡ Normal</button>
+      <button class="btn btn-secondary btn-sm" onclick="LiveMatch.setSpeed(800)">🚀 Fast</button>
+      <button class="btn btn-secondary btn-sm" onclick="App.startLiveMode()">🔄 New Match</button>
+    </div>
+
+  </section>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- ═══════════ REPLAY MODE SECTION ═══════════ -->
+  <!-- ═══════════════════════════════════════ -->
+  <section id="replaySection">
+
+    <!-- Match Selector -->
+    <div class="match-selector-wrap animate-in">
+      <label for="matchSelect">📁 Select Match:</label>
+      <select id="matchSelect" class="match-select"></select>
+      <div class="export-controls">
+        <button class="btn btn-secondary btn-sm" onclick="Interactions.exportDashboard()" title="Export (E)">📸 Export</button>
+      </div>
+    </div>
+
+    <!-- Match Info -->
+    <div class="match-info-bar animate-in" style="animation-delay:0.05s">
+      <span id="replayFormatBadge" class="match-format-badge format-t20">T20</span>
+      <span id="replayMatchTitle" class="match-title">—</span>
+      <span id="replayMatchMeta" class="match-meta">—</span>
+    </div>
+
+    <!-- Scoreboard -->
+    <div class="card scoreboard animate-in" style="animation-delay:0.1s">
+      <div class="team-block">
+        <div id="replayTeamAName" class="team-name">Team A</div>
+        <div id="replayTeamAScore" class="team-score">—</div>
+        <div id="replayTeamAOvers" class="team-overs"></div>
+      </div>
+      <div class="vs-divider">
+        <div class="vs-text">VS</div>
+        <div id="replayStatusText" class="match-status-text">Select a match</div>
+      </div>
+      <div class="team-block">
+        <div id="replayTeamBName" class="team-name">Team B</div>
+        <div id="replayTeamBScore" class="team-score">—</div>
+        <div id="replayTeamBOvers" class="team-overs"></div>
+      </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="stats-row stagger animate-in" style="animation-delay:0.15s">
+      <div class="card stat-card">
+        <div id="replayCRR" class="stat-value cyan">0.00</div>
+        <div class="stat-label">Run Rate</div>
+      </div>
+      <div class="card stat-card">
+        <div id="replayWinProb" class="stat-value green">—</div>
+        <div class="stat-label">Winner</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-value red"><span id="replayPressureVal">0</span></div>
+        <div class="stat-label">Pressure Index</div>
+        <div class="pressure-meter" style="margin-top:8px">
+          <div id="replayPressureFill" class="pressure-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Win Probability -->
+    <div class="card animate-in" style="animation-delay:0.2s;margin-bottom:20px">
+      <div class="card-title"><span class="icon">📊</span> Match Result</div>
+      <div class="win-prob-container">
+        <div class="win-prob-labels">
+          <span id="replayWinLabelA" class="team-a-label">Team A</span>
+          <span id="replayWinLabelB" class="team-b-label">Team B</span>
+        </div>
+        <div class="win-prob-bar-wrap">
+          <div id="replayWinFillA" class="win-prob-fill team-a" style="width:50%">50%</div>
+          <div id="replayWinFillB" class="win-prob-fill team-b" style="width:50%">50%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPLAY SLIDER (NEW) ── -->
+    <div class="replay-slider-container animate-in" style="animation-delay:0.22s">
+      <label>⏱ Over:</label>
+      <button id="sliderPlayBtn" class="slider-play-btn" title="Play/Pause (Space)">▶</button>
+      <input type="range" id="replaySlider" class="replay-slider" min="1" max="20" value="20">
+      <div id="sliderOverDisplay" class="slider-over-display">Over 20</div>
+    </div>
+
+    <!-- Innings Tabs -->
+    <div id="inningsTabs" class="innings-tabs" style="margin-bottom:20px"></div>
+
+    <!-- ── Charts Grid ── -->
+    <div class="dashboard-grid">
+      <div class="card full-width animate-in" style="animation-delay:0.25s">
+        <div class="card-title"><span class="icon">📈</span> Over-by-Over Progression</div>
+        <div class="chart-container"><canvas id="replayOverChart"></canvas></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.3s">
+        <div class="card-title"><span class="icon">📊</span> Manhattan (Runs per Over)</div>
+        <div class="chart-container"><canvas id="replayManhattanChart"></canvas></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.35s">
+        <div class="card-title"><span class="icon">📉</span> Win Probability Trend</div>
+        <div class="chart-container"><canvas id="replayWinProbChart"></canvas></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.4s">
+        <div class="card-title"><span class="icon">⚡</span> Phase Performance</div>
+        <div class="chart-container"><canvas id="replayPhaseChart"></canvas></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.45s">
+        <div class="card-title"><span class="icon">🎯</span> Scoring Breakdown</div>
+        <div class="chart-container"><canvas id="replayScoringChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── WAGON WHEEL + MOMENTUM (NEW) ── -->
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="card animate-in" style="animation-delay:0.48s">
+        <div class="card-title"><span class="icon">🏏</span> Wagon Wheel</div>
+        <div id="replayWagonWheel" class="wagon-wheel-container"></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.5s">
+        <div class="card-title"><span class="icon">🌊</span> Momentum Meter</div>
+        <div id="replayMomentum"></div>
+      </div>
+    </div>
+
+    <!-- ── COMMENTARY + PARTNERSHIPS (NEW) ── -->
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="card animate-in" style="animation-delay:0.52s">
+        <div class="card-title"><span class="icon">💬</span> AI Commentary</div>
+        <div id="replayCommentaryFeed" class="commentary-feed"></div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.55s">
+        <div class="card-title"><span class="icon">🤝</span> Partnership Tracker</div>
+        <div id="replayPartnerships" class="partnership-list"></div>
+      </div>
+    </div>
+
+    <!-- ── DOT BALL HEATMAP (NEW) ── -->
+    <div class="card animate-in" style="animation-delay:0.57s;margin-top:20px">
+      <div class="card-title"><span class="icon">🔥</span> Ball-by-Ball Heatmap</div>
+      <div id="replayHeatmap" class="heatmap-grid"></div>
+      <div class="heatmap-labels" style="margin-top:8px">
+        <span>● Dot</span> <span style="color:var(--text-secondary)">● Single</span>
+        <span style="color:var(--cyan)">● 2-3</span>
+        <span style="color:var(--amber)">● Four</span>
+        <span style="color:var(--red)">● Six</span>
+        <span style="color:#fff;background:rgba(255,68,102,0.5);padding:0 6px;border-radius:3px">W</span>
+      </div>
+    </div>
+
+    <!-- Phase Breakdown -->
+    <div class="card animate-in" style="animation-delay:0.58s;margin-top:20px">
+      <div class="card-title"><span class="icon">⚡</span> Phase Breakdown</div>
+      <div id="replayPhaseGrid" class="phase-grid"></div>
+    </div>
+
+    <!-- Wicket Timeline -->
+    <div class="card animate-in" style="animation-delay:0.6s;margin-top:20px">
+      <div class="card-title"><span class="icon">💀</span> Wicket & Scoring Timeline</div>
+      <div id="replayWicketTimeline" class="wicket-timeline"></div>
+      <div style="display:flex;gap:16px;margin-top:10px;font-size:0.7rem;color:var(--text-dim);">
+        <span>🟦 Normal</span> <span style="color:var(--green)">🟩 High</span> <span style="color:var(--red)">🟥 Wicket</span>
+      </div>
+    </div>
+
+    <!-- ── HEAD-TO-HEAD RADAR (NEW) ── -->
+    <div class="card animate-in" style="animation-delay:0.62s;margin-top:20px">
+      <div class="card-title"><span class="icon">⚔️</span> Head-to-Head Comparison</div>
+      <div class="h2h-selector">
+        <select id="h2hPlayer1"></select>
+        <span style="color:var(--text-dim);font-size:0.82rem;">vs</span>
+        <select id="h2hPlayer2"></select>
+      </div>
+      <div class="chart-container"><canvas id="replayRadarChart"></canvas></div>
+    </div>
+
+    <!-- Player Stats -->
+    <div class="dashboard-grid" style="margin-top:20px">
+      <div class="card animate-in" style="animation-delay:0.65s">
+        <div class="card-title"><span class="icon">🏏</span> Batting</div>
+        <div class="stats-table-wrap">
+          <table id="replayBatTable" class="stats-table">
+            <thead><tr><th>Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card animate-in" style="animation-delay:0.68s">
+        <div class="card-title"><span class="icon">🎳</span> Bowling</div>
+        <div class="stats-table-wrap">
+          <table id="replayBowlTable" class="stats-table">
+            <thead><tr><th>Bowler</th><th>O</th><th>R</th><th>W</th><th>Econ</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pressure Moments -->
+    <div class="card animate-in" style="animation-delay:0.7s;margin-top:20px">
+      <div class="card-title"><span class="icon">🔥</span> Pressure Moments</div>
+      <div id="replayPressureMoments"></div>
+    </div>
+
+    <!-- ── WHAT-IF SIMULATOR (NEW) ── -->
+    <div class="card animate-in" style="animation-delay:0.72s;margin-top:20px">
+      <div class="card-title"><span class="icon">🔮</span> What-If Simulator</div>
+      <div class="whatif-container">
+        <p style="font-size:0.78rem;color:var(--text-dim);margin-bottom:8px;">Adjust variables to see how the outcome would change. (Best with 2nd innings selected)</p>
+        <div class="whatif-controls">
+          <div class="whatif-control">
+            <label>Wickets Change</label>
+            <input type="range" id="whatifWickets" min="-5" max="5" value="0">
+            <span id="whatifWicketsVal" class="whatif-value">+0 wickets</span>
+          </div>
+          <div class="whatif-control">
+            <label>Extra Runs</label>
+            <input type="range" id="whatifExtras" min="0" max="50" value="0">
+            <span id="whatifExtrasVal" class="whatif-value">+0 runs</span>
+          </div>
+          <div class="whatif-control">
+            <label>Run Rate Boost</label>
+            <input type="range" id="whatifRunRate" min="-3" max="3" value="0" step="0.5">
+            <span id="whatifRunRateVal" class="whatif-value">+0.0 RR</span>
+          </div>
+        </div>
+        <div id="whatifResult" class="whatif-result">
+          <p style="color:var(--text-dim);font-size:0.82rem;">Switch to 2nd innings to use What-If simulator.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MATCH COMPARISON (NEW) ── -->
+    <div class="card animate-in" style="animation-delay:0.75s;margin-top:20px">
+      <div class="card-title"><span class="icon">📋</span> Match Comparison</div>
+      <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <select id="compMatch1" class="match-select" style="min-width:200px;flex:1"></select>
+        <span style="color:var(--text-dim);align-self:center;font-size:0.82rem;">vs</span>
+        <select id="compMatch2" class="match-select" style="min-width:200px;flex:1"></select>
+      </div>
+      <div class="comparison-grid">
+        <div id="compColumn1" class="comparison-column"></div>
+        <div id="compColumn2" class="comparison-column"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═══════════ FOOTER ═══════════ -->
+  <footer class="footer">
+    CricViz Intelligence Dashboard © 2024 • Built with ❤️ for Cricket Analytics<br>
+    <span style="font-size:0.65rem;opacity:0.5;">15 analytics features • Keyboard shortcuts enabled</span>
+  </footer>
+
+</div>
+
+<!-- Scripts (order matters) -->
+<script src="data.js"></script>
+<script src="analytics.js"></script>
+<script src="charts.js"></script>
+<script src="commentary.js"></script>
+<script src="effects.js"></script>
+<script src="live.js"></script>
+<script src="replay.js"></script>
+<script src="interactions.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
