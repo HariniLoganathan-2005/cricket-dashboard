@@ -269,50 +269,13 @@ const App = {
     // Replay Slider
     Interactions.setSliderMax(inn.overs.length);
 
-    // Heatmap
-    Interactions.renderHeatmap('replayHeatmap', inn.overs);
 
-    // H2H Radar (auto-select top 2 batsmen)
-    this.updateH2HRadar();
 
     // What-If
     Interactions.updateWhatIf();
   },
 
-  // ── H2H Radar ──
-  populateH2HSelectors() {
-    // Will be populated when match loads
-  },
 
-  updateH2HRadar() {
-    const analysis = MatchReplay.getAnalysis();
-    if (!analysis) return;
-
-    const batsmen = analysis.playerStats.batsmen;
-    if (batsmen.length < 2) return;
-
-    // Populate H2H selectors
-    const sel1 = document.getElementById('h2hPlayer1');
-    const sel2 = document.getElementById('h2hPlayer2');
-    if (sel1 && sel2) {
-      sel1.innerHTML = '';
-      sel2.innerHTML = '';
-      batsmen.forEach((b, i) => {
-        sel1.innerHTML += `<option value="${i}" ${i === 0 ? 'selected' : ''}>${b.name}</option>`;
-        sel2.innerHTML += `<option value="${i}" ${i === 1 ? 'selected' : ''}>${b.name}</option>`;
-      });
-
-      const render = () => {
-        const p1 = batsmen[parseInt(sel1.value)];
-        const p2 = batsmen[parseInt(sel2.value)];
-        if (p1 && p2) Interactions.renderH2HRadar('replayRadarChart', p1, p2);
-      };
-
-      sel1.onchange = render;
-      sel2.onchange = render;
-      render();
-    }
-  },
 
   // ── Match Comparison ──
   populateComparisonSelectors() {
